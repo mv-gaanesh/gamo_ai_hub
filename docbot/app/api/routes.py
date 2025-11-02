@@ -21,10 +21,8 @@ async def upload_doc(file: UploadFile):
 async def ask_question(question: str = Form(...)):
     vectordb = load_existing_vectorstore()
     qa_chain = build_qa_chain(vectordb)
-    response = qa_chain.run(question)
-    # For RetrievalQA the return structure differs; handle common cases
-    if isinstance(response, dict):
-        answer = response.get("result") or response.get("answer") or str(response)
-    else:
-        answer = str(response)
-    return {"answer": answer}
+
+    # ✅ Pass plain string, not dict
+    response = qa_chain.invoke(question)
+
+    return {"answer": response.content}

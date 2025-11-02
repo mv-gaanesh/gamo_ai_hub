@@ -1,9 +1,41 @@
-from langchain.chains import RetrievalQA
-from langchain.chat_models import ChatOpenAI
+# app/services/qa_chain.py
 
-def build_qa_chain(vectordb):
-    # model_name can be changed to a model you have access to
-    llm = ChatOpenAI(model_name="gpt-4o-mini", temperature=0)
-    retriever = vectordb.as_retriever(search_kwargs={"k": 3})
-    qa = RetrievalQA.from_chain_type(llm=llm, retriever=retriever, return_source_documents=True)
-    return qa
+import os
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import RunnablePassthrough
+
+def build_qa_chain(vectorstore):
+    """Builds a Q&A chain using LangChain 0.3.x Runnable pipeline"""
+    
+    # Convert vector store to retriever
+    retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
+
+    # Define the LLM
+    llm = ChatOpenAI(
+        model="gpt-3.5-turbo",
+        api_key=os.getenv("OPENAI_API_KEY")
+    )
+
+    # Define the prompt template
+    prompt = ChatPromptTemplate.from_template("""
+    You are an expert assistant. Use the following context to answer the question.
+    If you don't know the answer, say "I’m not sure, please provide more details."
+
+    Context:
+    {context}
+
+    Question:
+    {question}
+
+    Answer:
+    """)
+
+    # Build the chain using Runnable syntax
+    chain = (
+        {"context": retriever, "question": RunnablePassthrough()}
+        | prompt
+        | llm
+    )
+
+    return chain
